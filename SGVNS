@@ -1,0 +1,610 @@
+#SGVNS
+# %% 
+
+import numpy as np
+import pandas
+from collections import Counter
+import random
+import math as m
+import operator
+from collections import OrderedDict
+from IPython.utils.py3compat import xrange
+from numpy.matlib import rand
+from operator import itemgetter
+# importing libraries for time CPU
+import time
+awal = time.time() 
+#%%
+data = open('wanita.txt', 'r')
+data = data.readlines()
+open1 = 'wilayah.xlsx'
+df = pandas.read_excel(open1)
+wilayah = pandas.DataFrame(df)
+open2 = 'ukt.xlsx'
+df2 = pandas.read_excel(open2)  
+UKT = pandas.DataFrame(df2)
+
+
+wil = []
+pd = []
+ukt = []
+agm = []
+for i in range(len(data)):
+    data[i] = data[i].split()
+    wil.append(int(data[i][0]))
+    pd.append(str(data[i][1]))
+    ukt.append(int(data[i][2]))
+    agm.append(int(data[i][3]))
+# %%
+#------------------------------INISIALISASI------------------------
+def generateIndividu(ngroup, nmin, nmax, ndata): 
+    template = []
+    for i in range(ngroup):
+        for j in range(nmin):
+            template.append(i)
+
+    kurang = len(template)
+
+    for i in range (ndata - kurang):
+        while True:
+            check = Counter(template)
+            num = np.random.randint(ngroup)
+            nval = check[num]
+
+            if nval < nmax :
+                template.append(num)
+                break
+    random.shuffle(template)
+    return template
+
+#%%
+# Buat nyari kelompok ke-i ada di index keberapa aja
+def findIndex(value, qlist):
+    indices = []
+    idx = 0
+    while True:
+        try:
+            # Search for item in list from idx to the end of list
+            idx = qlist.index(value, idx)
+            # Add the index position in list
+            indices.append(idx)
+            idx +=1
+        except ValueError:
+            break
+    return indices
+#print(dataModel)
+
+#%%
+
+#--------------------------Fitness-Function-----------------------------
+#menghitung fitness point untuk setiap kelompok#
+def fitnessfunction(dataModel, ngroup):
+    fitlist = []
+    total = 0
+    for i in range(ngroup):
+        value = []
+        indeks = findIndex(i, dataModel)
+        #print(indeks)
+        for i in indeks:
+            for j in indeks:
+                if i > j:
+                    v_wil = 0
+                    if wil[i] != wil[j]:
+                        r = wilayah.loc[(wilayah['kota_1'] == wil[i]) & (wilayah['kota_2'] == wil[j])]
+                        for indexx, rows in r.iterrows():
+                            my_list = [rows.jarak_akhir]
+                            #print(my_list)
+                        for index in my_list:
+                            v_wil = index
+                            #print(v_wil)
+                    
+                    v_ukt = 0
+                    if ukt[i] != ukt[j]:
+                        r = UKT.loc[(UKT['UKT_1'] == ukt[i]) & (UKT['UKT_2'] == ukt[j])]
+                        for indexx, rows in r.iterrows():
+                            my_list = [rows.Jarak]
+                            #print(my_list)
+                        for index in my_list:
+                            v_ukt = index
+                            #print(v_wil)
+                        
+                    v_pd = 0
+                    if pd[i] != pd[j]:
+                        v_pd = 100
+                    
+                    v_ag = 0
+                    if agm[i] != agm[j]:
+                        v_ag = 100
+                        
+                    point = m.sqrt(pow(v_wil, 2) + pow(v_ukt, 2) + pow(v_pd, 2) + pow(v_ag, 2))
+                    #print(point)
+                    value.append(point)
+                    #print(i, j, ': ', point)
+                    nilai_grup = sum(value)
+        #print(value)
+        #print(nilai_grup)
+        total = total + nilai_grup
+    fitlist.append(total)    
+    return fitlist
+
+#%%
+#-------------------------SHAKE-----------------------
+def shake(k, dataModel):
+    while k != 0 :
+        elemen1 = random.randint(0,304)
+        elemen2 = random.randint(0,304)
+        #print([elemen1, elemen2])
+        #print([dataModel[elemen1], dataModel[elemen2]])
+
+        while dataModel[elemen2] == dataModel[elemen1]:
+            elemen2 = random.randint(0,304)
+
+        #print([elemen1, elemen2])
+        #print([dataModel[elemen1], dataModel[elemen2]])
+
+
+        def swapPositions(list, pos1, pos2): 
+            
+            list[pos1], list[pos2] = list[pos2], list[pos1] 
+            return list
+
+        dataModel = swapPositions(dataModel, elemen1, elemen2)
+        #new_fitnes = fitnessfunction(swap, ngroup)
+
+        #print(new_fitnes)
+        #print(dataModel)
+        k = k - 1
+    return(dataModel)
+
+# %%
+#fungsi untuk hitung nilai keberagaman kelompok yang terpilih dan nilai yang akan di dropout dari grup terpilih
+def keberagamankelompok(grup_dituju, elemen_insert):
+    list_isi = findIndex(grup_dituju, dataModel)
+    #nilai keberagaman kelompok asli
+    total = []
+    for i in list_isi:
+        for j in list_isi:
+            if i > j :
+                r = dij.loc[(dij['i'] == i) & (dij['j'] == j)]
+                jarak = r.jarak.values
+                total.append(jarak)
+    fitnes_grup_asli = sum(total)
+
+    #nilai keberagaman kelompok dengan indeks ke x ditukar dengan elemen insert
+    list_fitnes = []
+    list_fitnes.append([fitnes_grup_asli, list_isi])
+    for x in range(4):
+        list_isii = []
+        for i in list_isi:
+            list_isii.append(i)
+        for n, i in enumerate(list_isii):
+            if n == x:
+                list_isii[n] = elemen_insert
+        total = []
+        for i in list_isii:
+            for j in list_isii:
+                if i > j :
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == j)]
+                    jarak = r.jarak.values
+                    total.append(jarak)
+        fitnes_tukar = sum(total)
+        list_fitnes.append([fitnes_tukar,list_isii])
+    tabel = pandas.DataFrame(list_fitnes, columns=["fitnes_grup", "elemen_grup"])
+    #print(tabel)
+    maxValue = tabel['fitnes_grup'].max()
+    #print(maxValue)
+    flmaxValue = float(maxValue)
+    #print(flmaxValue)
+    grup = tabel.loc[tabel['fitnes_grup'] == flmaxValue]
+    list_grup_terpilih = grup.elemen_grup.values
+    #print(list_grup_terpilih)
+    #cek apakah elemen yg hendak diinsert ada di grup terpilih
+    grup_terpilih = list_grup_terpilih[0] #kalo nilai fitnes sama maka yg diambil adalah grup awal tanpa elemen insert
+    grup_terpilih_set = set(grup_terpilih)
+    if elemen_insert in grup_terpilih_set:
+        indeks = grup_terpilih.index(elemen_insert)
+        nilai_dropout = list_isi[indeks]
+    else:
+        nilai_dropout = elemen_insert            
+    #print(nilai_dropout)
+    return(nilai_dropout)
+
+# %% 
+#---------------------INSERTION----------------------------
+def insertion(dataModel):
+    for i in range(ndata): #ndata
+        grup_asal = dataModel[i]
+        #print('ini grup asal:', grup_asal)
+        indeks_grup_asal = findIndex(grup_asal, dataModel)
+        #print('ini agg grup asal: ', indeks_grup_asal)
+        kumpulan_nilai_delta = []
+
+        for grup_baru in range(ngroup): #ngroup
+            #print('ini grup baru:', grup_baru)
+            #ketahui dahulu isi elemen grup baru
+            indeks_grup_baru = findIndex(grup_baru, dataModel)
+            #print('ini agg grup baru: ', indeks_grup_baru)
+            if grup_asal != grup_baru :
+                list_jarak_1 = []
+                list_jarak_2 = []
+                #menghitung sdvg
+                #sdvg adalah jumlah keanekaragaman elemen i dgn elemen di dalam grup baru
+                for k in indeks_grup_baru:
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    #print(jarak)
+                    list_jarak_1.append(jarak)
+                sdvg = sum(list_jarak_1)
+                #print('nilai sdvg: ', sdvg)
+
+                #menghitung sdxv
+                #sdxv adalah nilai keberagaman elemen i dgn elemen di dalam grup asal
+                for k in indeks_grup_asal:
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    #print(jarak)
+                    list_jarak_2.append(jarak)
+                sdxv = sum(list_jarak_2)
+                #print('nilai sdxv:', sdxv)
+
+                delta = sdvg - sdxv
+                #print('nilai delta:',delta)
+                #membuat dataframe yg kolom 1 itu grupbaru dan kolom 2 itu nilai delta nya
+                kumpulan_nilai_delta.append([grup_baru, delta])
+                #print(kumpulan_nilai_delta)
+            #mengambil kelompok dengan nilai delta terbesar
+        tabel1 = pandas.DataFrame(kumpulan_nilai_delta, columns=["grupbaru", "delta"])
+        #print(tabel1)
+        maxValue = tabel1['delta'].max()
+        flmaxValue = float(maxValue)
+        #print(flmaxValue)
+        if maxValue < 0 :
+            dataModel[i] = grup_asal
+        if maxValue > 0 :
+            grup = tabel1.loc[tabel1['delta'] == flmaxValue]
+            grup_terpilih = grup.grupbaru.values
+            #print(grup_terpilih)
+            #cek ukuran grup, jika < 4 maka masukkan
+            size = findIndex(grup_terpilih, dataModel)
+            #print(size)
+            if len(size) < 4 :
+                #dataModel[i] replace with new grup
+                dataModel[i] = grup_terpilih[0]
+                #print(findIndex(grup_terpilih, dataModel))
+                #print(findIndex(grup_asal, dataModel))
+            else: #bandingkan nilai grup dengan masing masing elemen
+                nilai = keberagamankelompok(grup_terpilih, i)
+                #print(nilai)
+                if nilai != i: #elemen insert jadi disisipkan
+                    dataModel[i] = grup_terpilih[0]
+                    dropout_elemen = nilai #elemen x dikeluarkan dari grup asalnya
+                    #tempatkan elemen yg di dropout ke dalam kelompok asal milik elemen insert, 
+                    #supaya memiliki grup asal ketika di proses di pencarian delta
+                    dataModel[dropout_elemen] = grup_asal
+                    #print(dropout_elemen)
+                else: #elemen insert di dropout
+                    #dari dataframe kumpulan grup baru, ambil nilai delta tertinggi except nilai dari grup terpilih sebelumnya
+                    # step 1 : del grup terpilih yg tdk jadi diinsert dari dataframe kumpulan grup baru
+                    # step 2 : ambil nilai max nya
+                    # step 3 : ulangi prosedur insert nya, apabila gagal insert maka:
+                    # step 4 : ulangi langkah memilih nilai delta max apabila elemen insert ditolak kembali
+                    #buat perulangan disini
+                    while True:
+                        #print(tabel1)
+                        #print(flmaxValue)
+                        #hapus grup tidak terpilih dari dataframe
+                        dataModel[i] = grup_asal
+                        tabel1 = tabel1.drop(tabel1[tabel1.delta == flmaxValue].index)
+                        #print(tabel1)
+                        if len(tabel1) == 0:
+                            dataModel[i] = grup_asal
+                            break
+                        if len(tabel1) != 0:
+                            maxValue = tabel1['delta'].max()
+                            flmaxValue = float(maxValue)
+                            #print(flmaxValue)
+                            if maxValue < 0 :
+                                dataModel[i] = grup_asal
+                                break
+                            if maxValue > 0 :
+                                grup = tabel1.loc[tabel1['delta'] == flmaxValue]
+                                grup_terpilih = grup.grupbaru.values
+                                #print(grup_terpilih)
+                                #cek ukuran grup, jika < 4 maka masukkan
+                                size = findIndex(grup_terpilih, dataModel)
+                                #print(size)
+                                #print(len(size))
+                                if len(size) < 4 :
+                                    #dataModel[i] replace with new grup
+                                    dataModel[i] = grup_terpilih[0] #krn grup terpilih dalam bentul list maka dipanggil indeks nya
+                                    #print(findIndex(grup_terpilih, dataModel))
+                                    #print(findIndex(grup_asal, dataModel))
+                                else: #bandingkan nilai grup dengan masing masing elemen
+                                    nilai = keberagamankelompok(grup_terpilih, i)
+                                    #print(nilai)
+                                    if nilai != i: #elemen insert jadi disisipkan
+                                        dataModel[i] = grup_terpilih[0] #krn grup terpilih dalam bentul list maka dipanggil indeks nya
+                                        dropout_elemen = nilai #elemen x dikeluarkan dari grup asalnya
+                                        #tempatkan elemen yg di dropout ke dalam kelompok asal milik elemen insert, 
+                                        #supaya memiliki grup asal ketika di proses di pencarian delta
+                                        dataModel[dropout_elemen] = grup_asal
+                                        #print(dropout_elemen)
+                                        break
+                                    else: #elemen insert di dropout
+                                        dropout_elemen = i
+                                        #print(dropout_elemen)
+    
+    return(dataModel)                  
+
+
+#%% fungsi untuk swap elemen
+def swapPositions(list, pos1, pos2): 
+      
+    list[pos1], list[pos2] = list[pos2], list[pos1] 
+    return list
+
+# %%
+#---------------------------------SWAP-----------------------------------------
+def swap(dataModel):
+    for i in range (ndata - 1):
+      for x in range (ndata):
+          if x > i :
+            j = dataModel[i]
+            y = dataModel[x]
+            #print([i,x]) index/elemen
+            #print([j,y]) isi index/grup/kelompok
+            if x != y :
+                #print(i,x)
+                #hitung nilai delta
+                # 1) hitung sdj|xy (nilai keberagaman elemen indeks ke i di grup j diantara elemen kelompok y)
+                list_sdjxy = []
+                index_grup_y = findIndex(y, dataModel)
+                for k in index_grup_y:
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    list_sdjxy.append(jarak)
+                sdjxy = sum(list_sdjxy)
+                #print('nilai sdjxy: ', sdjxy)
+                # 2) hitung sdy|xj (nilai keberagaman elemen indeks ke x di grup y diantara elemen kelompok j)
+                list_sdyxj = []
+                index_grup_j = findIndex(j, dataModel)
+                for k in index_grup_j:
+                    r = dij.loc[(dij['i'] == x) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    list_sdyxj.append(jarak)
+                sdyxj = sum(list_sdyxj)
+                #print('nilai sdyxj: ', sdyxj)
+                # 3) hitung sdj|xj (nilai keberagaman elemen indeks ke i diantara elemen di kelompok j/asalnya)
+                list_sdjxj = []
+                for k in index_grup_j:
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    list_sdjxj.append(jarak)
+                sdjxj = sum(list_sdjxj)
+                #print('nilai sdjxj: ', sdjxj)
+                # 4) hitung sdy|xy (nilai keberagaman elemen indeks ke x diantara elemen di kelompok y/asalnya)
+                list_sdyxy = []
+                for k in index_grup_y:
+                    r = dij.loc[(dij['i'] == x) & (dij['j'] == k)]
+                    jarak = r.jarak.values
+                    list_sdyxy.append(jarak)
+                sdyxy = sum(list_sdyxy)
+                #print('nilai sdyxy: ', sdyxy)
+                # 5) 2.(djy)
+                r = dij.loc[(dij['i'] == i) & (dij['j'] == x)]
+                jarak = r.jarak.values
+                djy = 2*jarak
+                #print(djy)
+                # delta = 1 + 2 - 3 - 4 - 5
+                delta = sdjxy + sdyxj - sdjxj - sdyxy - djy
+                #print(delta)
+                
+                if delta > 0 :
+                    #swap elemen i masuk ke grup y dan elemen x masuk ke grup j
+                    dataModel = swapPositions(dataModel, i, x)
+    return(dataModel)
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+#%%
+#------------------------SGVNS-----------------------------------------------
+#inisialisasi
+ngroup = 77
+nmin = 3
+nmax = 4
+ndata = 305
+dataModel = generateIndividu(ngroup, nmin, nmax, ndata)
+np.shape(dataModel)
+#print(dataModel)
+
+#--------membuat tabel jarak antar seluruh elemen untuk matriks sdc ------------------
+value = []
+for i in range(ndata):
+    for j in range(ndata):
+        v_wil = 0
+        if wil[i] != wil[j]:
+            r = wilayah.loc[(wilayah['kota_1'] == wil[i]) & (wilayah['kota_2'] == wil[j])]
+            for indexx, rows in r.iterrows():
+                my_list = [rows.jarak_akhir]
+                #print(my_list)
+            for index in my_list:
+                v_wil = index
+                #print(v_wil)
+        
+        v_ukt = 0
+        if ukt[i] != ukt[j]:
+            r = UKT.loc[(UKT['UKT_1'] == ukt[i]) & (UKT['UKT_2'] == ukt[j])]
+            for indexx, rows in r.iterrows():
+                my_list = [rows.Jarak]
+                #print(my_list)
+            for index in my_list:
+                v_ukt = index
+                #print(v_wil)
+            
+        v_pd = 0
+        if pd[i] != pd[j]:
+            v_pd = 100
+        
+        v_ag = 0
+        if agm[i] != agm[j]:
+            v_ag = 100
+            
+        point = m.sqrt(pow(v_wil, 2) + pow(v_ukt, 2) + pow(v_pd, 2) + pow(v_ag, 2))
+        #print(point)
+        value.append([i, j , point])
+        #print(i, j, ': ', point)
+#print(value)
+#len(value)
+dij = pandas.DataFrame(value, columns=["i", "j", "jarak"])
+#print(dij)
+#%%
+#-------------------------Current Solution---------------------------------------------
+#print(dataModel)
+fitnes_dm = fitnessfunction(dataModel, ngroup)
+#print(fitnes_dm)
+#%%
+insertion_current_solution = insertion(dataModel)
+#print(insertion_current_solution)
+fitnes_ic = fitnessfunction(insertion_current_solution, ngroup)
+#print(fitnes_ic)
+#%%
+swap_current_solution = swap(insertion_current_solution)
+print(swap_current_solution)
+fitnes_sc = fitnessfunction(swap_current_solution, ngroup)
+#print(fitnes_sc)
+#%%
+best_solution_model = []
+for i in swap_current_solution:
+    best_solution_model.append(i)
+fitnes_best_solution = []
+fitnes_best_solution.append(fitnes_sc)
+print([best_solution_model, fitnes_best_solution])
+#%%
+solusi_saat_ini_model = []
+for i in swap_current_solution:
+    solusi_saat_ini_model.append(i)
+fitnes_solusi_saat_ini = []
+fitnes_solusi_saat_ini.append(fitnes_sc)
+print([solusi_saat_ini_model, fitnes_solusi_saat_ini])
+
+
+#%%
+#-------------------------while CPU Time-------------------------------
+waktu_awal_LS = time.time() 
+kmax = 60
+kmin = 0
+t_end = time.time() + 60 * 1
+while time.time() < t_end: 
+#-------------------------New Solution---------------------------------------------
+
+    #shake
+    shake_new_solution = shake(kmax, swap_current_solution)
+    #print(shake_new_solution)
+    #%%
+    fitnes_setelah_shake = fitnessfunction(shake_new_solution, ngroup)
+    print("fitnes_setelah_shake:", fitnes_setelah_shake)
+    #%%
+    insertion_new_solution = insertion(swap_current_solution)
+    print("insertion_new_solution:", insertion_new_solution)
+    fitnes_in = fitnessfunction(insertion_new_solution, ngroup)
+    print("fitnes_insertion_new_solution:", fitnes_in)
+    #%%
+    swap_new_solution = swap(insertion_new_solution)
+    print("swap_new_solution:", swap_new_solution)
+    fitnes_sn = fitnessfunction(swap_new_solution, ngroup)
+    #%%
+    print("fitnes_solusi_baru: ", fitnes_sn)
+    #%%
+    solusi_baru_model = []
+    for i in swap_new_solution:
+        solusi_baru_model.append(i)
+    fitnes_solusi_baru = []
+    fitnes_solusi_baru.append(fitnes_sn)
+    #print([solusi_baru_model, fitnes_solusi_baru])
+    #%%
+    #-------------------------SVNS---------------------------------------------
+    # cari ro antara xn dan xc
+    # (1) bandingkan nilai tiap indeks dari masing-masing datamodel xc dan xn
+    results = 0
+    for i in range(ndata):
+        if solusi_saat_ini_model[i] != solusi_baru_model[i]:
+            #print([solusi_saat_ini[i], swap_new_solution[i]])
+            results = results + 1
+    #print(results)   
+    # (2) jumlahkan elemen dari yg exist di xc but not exist in xn
+    # (3) jumlah dari elemen yg exist in xn but not exist in xc akan sama dengan jumlah diatas
+    # (4) sehingga hanya perlu hitung (2) lalu kalikan 2 kali
+    ro = results * 2
+    #print(ro)
+    ro_new_current = ro/((ndata ** 2) / ngroup )
+    #print(ro_new_current)
+    # hitung nilai jarak xn dan xc
+    jarak_new_current = fitnes_solusi_baru[0][0]/fitnes_solusi_saat_ini[0][0] + (0.05 * ro_new_current)
+    #print(jarak_new_current)
+
+
+
+    # cari ro antara xn dan xb
+    results = 0
+    for i in range(ndata):
+        if best_solution_model[i] != solusi_baru_model[i]:
+            #print([solusi_saat_ini[i], swap_new_solution[i]])
+            results = results + 1
+    #print(results)
+    ro = results * 2
+    #print(ro)
+    ro_new_current = ro/((ndata ** 2) / ngroup )
+    #print(ro_new_current)
+    #hitung nlai jarak antara xn dan xb
+    jarak_new_best = fitnes_solusi_baru[0][0]/fitnes_solusi_saat_ini[0][0] + (0.05 * ro_new_current)
+    #print(jarak_new_best)
+
+    if jarak_new_current > 1 and jarak_new_best > 1:
+        del solusi_saat_ini_model
+        solusi_saat_ini_model = []
+        for i in solusi_baru_model:
+            solusi_saat_ini_model.append(i)
+        fitnes_solusi_saat_ini.append(fitnes_solusi_baru[0][0])
+        del fitnes_solusi_saat_ini[0]
+
+        if fitnes_solusi_saat_ini[0] > fitnes_best_solution[0][0]:
+            del best_solution_model
+            best_solution_model = []
+            for i in solusi_saat_ini_model:
+                best_solution_model.append(i)
+                #print(fitnes_solusi_saat_ini[0])
+            fitnes_best_solution.append(fitnes_solusi_saat_ini[0])
+            del fitnes_best_solution[0]
+        k = kmin
+    else:
+        k = k + 1
+        if k > kmax:
+            k = kmin
+
+    del swap_current_solution
+    swap_current_solution = []
+    for i in solusi_saat_ini_model:
+        swap_current_solution.append(i)
+
+waktu_akhir_LS = time.time() 
+waktu_LS = waktu_akhir_LS - waktu_awal_LS
+
+    
+print(best_solution_model)
+print("nilai fitnes : ", fitnes_best_solution)
+#%%
+akhir = time.time()  
+waktu_pemrosesan = akhir - awal
+print("waktu proses : ", waktu_pemrosesan)
+print("waktu proses Local Search : ", waktu_LS)
