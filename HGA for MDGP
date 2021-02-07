@@ -1,0 +1,540 @@
+# %% Hybrid Genetic Algorithm
+import numpy as np
+import pandas
+from collections import Counter
+import random
+import math as m
+import operator
+from collections import OrderedDict
+from IPython.utils.py3compat import xrange
+from numpy.matlib import rand
+from operator import itemgetter 
+import time 
+awal = time.time() 
+#file = 'pria2.xlsx'
+#data = pandas.read_excel(file)
+data = open('untitled.txt', 'r')
+data = data.readlines()
+open1 = 'wilayah.xlsx'
+df = pandas.read_excel(open1)
+wilayah = pandas.DataFrame(df)
+open2 = 'ukt.xlsx'
+df2 = pandas.read_excel(open2)
+UKT = pandas.DataFrame(df2)
+
+wil = []
+pd = []
+ukt = []
+agm = []
+for i in range(len(data)):
+    data[i] = data[i].split()
+    wil.append(int(data[i][0]))
+    pd.append(str(data[i][1]))
+    ukt.append(int(data[i][2]))
+    agm.append(int(data[i][3]))
+# %%
+#------------------------------Membuat Kromosom------------------------
+def generateKromosom(populasi, ngroup, nmin, nmax, ndata):
+    model = []
+    for i in range(populasi): 
+        template = []
+        for i in range(ngroup):
+            for j in range(nmin):
+                template.append(i)
+
+        kurang = len(template)
+
+        for i in range (ndata - kurang):
+            while True:
+                check = Counter(template)
+                num = np.random.randint(ngroup)
+                nval = check[num]
+
+                if nval < nmax :
+                    template.append(num)
+                    break
+        random.shuffle(template)
+        model.append(template)
+    #print(model)
+    return model
+
+populasi = 100
+ngroup = 77
+nmin = 3
+nmax = 4
+ndata = 305
+dataModel = generateKromosom(populasi, ngroup, nmin, nmax, ndata)
+#np.shape(dataModel)
+# Buat nyari kelompok ke-i ada di index keberapa aja
+def findIndex(value, qlist):
+    indices = []
+    idx = -1
+    while True:
+        try:
+            idx = qlist.index(value, idx+1)
+            indices.append(idx)
+        except ValueError:
+            break
+    return indices
+
+#%%
+#--------membuat tabel jarak antar seluruh elemen untuk matriks sdc ------------------
+value = []
+for i in range(ndata):
+    for j in range(ndata):
+        #if i > j:
+        v_wil = 0
+        if wil[i] != wil[j]:
+            r = wilayah.loc[(wilayah['kota_1'] == wil[i]) & (wilayah['kota_2'] == wil[j])]
+            for indexx, rows in r.iterrows():
+                my_list = [rows.jarak_akhir]
+                #print(my_list)
+            for index in my_list:
+                v_wil = index
+                #print(v_wil)
+        
+        v_ukt = 0
+        if ukt[i] != ukt[j]:
+            r = UKT.loc[(UKT['UKT_1'] == ukt[i]) & (UKT['UKT_2'] == ukt[j])]
+            for indexx, rows in r.iterrows():
+                my_list = [rows.Jarak]
+                #print(my_list)
+            for index in my_list:
+                v_ukt = index
+                #print(v_wil)
+            
+        v_pd = 0
+        if pd[i] != pd[j]:
+            v_pd = 100
+        
+        v_ag = 0
+        if agm[i] != agm[j]:
+            v_ag = 100
+            
+        point = m.sqrt(pow(v_wil, 2) + pow(v_ukt, 2) + pow(v_pd, 2) + pow(v_ag, 2))
+        #print(point)
+        value.append([i, j , point])
+        #print(i, j, ': ', point)
+#print(value)
+#len(value)
+dij = pandas.DataFrame(value, columns=["i", "j", "jarak"])
+print(dij)
+
+
+#--------------------------Fitness-Function-----------------------------
+#menghitung fitness point untuk setiap kelompok#
+def fitnesssfunction(dataModel, ngroup):
+    fitlist = []
+    total = 0
+    for i in range(ngroup):
+        value = []
+        indeks = findIndex(i, dataModel)
+        #print(indeks)
+        for i in indeks:
+            for j in indeks:
+                if i > j:
+                    list_dij = []
+                    r = dij.loc[(dij['i'] == i) & (dij['j'] == j)]
+                    jarak = r.jarak.values
+                    list_dij.append(jarak)
+                    d = sum(list_dij)
+                    #print('nilai dij: ', d)
+                    value.append(d)
+                    #print(i, j, ': ', d)
+                    nilai_grup = sum(value)
+        #print(value)
+        #print(nilai_grup)
+        total = total + nilai_grup
+    fitlist.append(total)
+    del value
+    del indeks
+    return fitlist
+
+#--------------------------Fitness-Function-----------------------------
+#menghitung fitness point untuk setiap kelompok#
+def fitnessfunction(dataModel, ngroup):
+    fitlist = []
+    #print(dataModel)
+    #print(len(dataModel))
+    for x in range(len(dataModel)):
+        total = 0
+        #print(x)
+        for i in range(ngroup):
+            value = []
+            indeks = findIndex(i, dataModel[x])
+            #print(indeks)
+            for i in indeks:
+                for j in indeks:
+                    if i > j:
+                        v_wil = 0
+                        if wil[i] != wil[j]:
+                            r = wilayah.loc[(wilayah['kota_1'] == wil[i]) & (wilayah['kota_2'] == wil[j])]
+                            for indexx, rows in r.iterrows():
+                                my_list = [rows.jarak_akhir]
+                                #print(my_list)
+                            for index in my_list:
+                                v_wil = index
+                                #print(v_wil)
+                        
+                        v_ukt = 0
+                        if ukt[i] != ukt[j]:
+                            r = UKT.loc[(UKT['UKT_1'] == ukt[i]) & (UKT['UKT_2'] == ukt[j])]
+                            for indexx, rows in r.iterrows():
+                                my_list = [rows.Jarak]
+                                #print(my_list)
+                            for index in my_list:
+                                v_ukt = index
+                                #print(v_wil)
+                            
+                        v_pd = 0
+                        if pd[i] != pd[j]:
+                            v_pd = 100
+                        
+                        v_ag = 0
+                        if agm[i] != agm[j]:
+                            v_ag = 100
+                            
+                        point = m.sqrt(pow(v_wil, 2) + pow(v_ukt, 2) + pow(v_pd, 2) + pow(v_ag, 2))
+                        #print(point)
+                        value.append(point)
+                        #print(i, j, ': ', point)
+                        nilai_grup = sum(value)
+            #print(value)
+            #print(nilai_grup)
+            total = total + nilai_grup
+        fitlist.append(total)
+        #print(total)
+    #print(fitlist)
+    
+    population = pandas.DataFrame( OrderedDict({'kromosom': pandas.Series(dataModel), 'fitnes': pandas.Series(fitlist)}))
+    #print(populasi)
+    #a = [tuple(l) for l in dataModel]
+    #print(a)
+    #populasi = dict(zip(a, fitlist))
+    #dinda = [population.fitnes]
+    
+    return population
+
+nilai_fitness = fitnessfunction(dataModel, ngroup)
+#print(nilai_fitness)
+#print(nilai_fitness.loc[nilai_fitness['fitnes']])
+
+#%%
+#kumpulan populasi
+kumpulan_populasi = nilai_fitness
+print(kumpulan_populasi)
+
+#%%
+# lakukan sampai 30 generasi
+for i in range(30) :
+    #-------------------------Selection--------------------------------------
+    def roulette_select(nilaiFitness):
+        total_fitness = nilaiFitness['fitnes'].sum()
+        #print(total_fitness)
+        #print(nilaiFitness.fitnes)
+        rel_fitness = [f/total_fitness for f in nilaiFitness.fitnes]
+        #print(rel_fitness)
+        probs = [sum(rel_fitness[:i+1]) for i in range(len(rel_fitness))]
+        #print(probs)
+        new_population = []
+        for n in xrange(2):
+                r = random.uniform(0, 1)
+                for (i, individual) in enumerate(nilaiFitness.fitnes):
+                    if r <= probs[i]:
+                        new_population.append(individual)
+                        break     
+        while (new_population[0] == new_population[1]):
+            for n in xrange(1):
+                r = random.uniform(0, 1)
+                for (i, individual) in enumerate(nilaiFitness.fitnes):
+                    if r <= probs[i]:
+                        del new_population[1]
+                        new_population.append(individual)
+                        break 
+
+        #print(new_population)
+        lisst = []
+        for i in new_population:
+            new = nilaiFitness.loc[(nilaiFitness['fitnes'] == i)]
+            my_list = new.kromosom
+            my_lisst = my_list.values.tolist()
+            lisst.append(my_lisst)
+        #print(lisst) 
+        return lisst
+
+    seleksi = roulette_select(kumpulan_populasi)
+    #print(seleksi)
+    
+    
+    #-----------------------------CROSSOVER---------------------------------
+    #inisialisasi
+    def crossover(seleksi):
+        parent1 = seleksi[0][0]
+        parent2 = seleksi[1][0]
+        halfgroup = ngroup//2
+        #print(halfgroup)
+        #ambil titik tengah parent2L
+        list_inject = []
+        i = 0
+        while (i in range(halfgroup)):
+            indeks = findIndex(i, parent2)
+            list_inject.append(indeks)
+            i = i+1
+        #print(list_inject)
+        #print((sum(len(x) for x in list_inject)))
+        i = 0
+        list_parent1 = []
+        while (i in range(ngroup)):
+            indeks = findIndex(i, parent1)
+            list_parent1.append(indeks)
+            i = i + 1 
+        #print(list_parent1)
+        #print((sum(len(x) for x in list_parent1)))
+
+        #%%
+        #compare parent1 dgn halfparent2 dan hapus elemen yg sama
+        def remove_nested(L, x):
+            for S in L:
+                try:
+                    S.remove(x)
+                except ValueError:
+                    pass
+                else:
+                    break  # Value was found and removed
+            else:
+                raise ValueError("remove_nested(L, x): x not in nested list")
+
+        for i in list_inject:
+            for j in i:
+                for x in list_parent1:
+                    for y in x:
+                        if y == j:
+                            remove_nested(list_parent1, y)
+
+                            
+        #%%
+        #gabungkan halfparent dgn parent1 berdasarkan grup nya
+        lst = [[] for _ in xrange(halfgroup)]
+        lst1 = list_inject + lst
+        new = [list_parent1[i] + lst1[i] for i in range(len(list_parent1))]
+        #print(new)
+        #%%
+        #normalisasi ukuran grup (ambil elemen secara acak dari grup yg lebih dari 3 atau 4)
+        lst = []
+        for y in new:
+            length = len(y)
+            if length > 4 : #ambil n data lalu simpan dalam list!
+                n = length - 4
+                for i in range(n):
+                    #pilih elemen secara acak
+                    pilih = random.choice(y)
+                    #hapus elemen dari list y
+                    y.remove(pilih)
+                    #masukkan elemen ke dlm list baru
+                    lst.append(pilih)
+
+        #%%
+        #masukin elemen ke grup yg n < 3
+        for y in new:
+            length = len(y)
+            if length < nmin:
+                n = nmin - length
+                for i in range(n):
+                        add = random.choice(lst)
+                        lst.remove(add)
+                        y.append(add)
+
+        #%%
+        #masih ada sisa di list, masukkan kembali ke grup dgn n < nmax
+        for y in new:
+            length = len(y)
+            if length < nmax:
+                n = nmax - length
+                for i in range(n):
+                    if (len(lst) != 0):
+                        add = random.choice(lst)
+                        lst.remove(add)
+                        y.append(add)
+                    break
+        
+        return(new)
+
+    penyilangan = crossover(seleksi)
+    #print(penyilangan)
+
+    
+    #------------------------------Mutation----------------------------------
+    def mutation (penyilangan):
+        #randomly selected group
+        pick = random.sample(penyilangan, 2)
+        #print(pick)
+
+        #%%
+        #random select elemen
+        elemen1 = random.choice(pick[0])
+        elemen2 = random.choice(pick[1])
+        #print(elemen1, elemen2)
+
+        #%%
+        for d in penyilangan:
+            if d == pick[0] :
+                #print(d)
+                for n, i in enumerate(d) :
+                    if i == elemen1:
+                        d[n] = elemen2
+                #print(d)
+            if d == pick[1] :
+                #print(d)
+                for n, i in enumerate(d) :
+                    if i == elemen2:
+                        d[n] = elemen1
+                #print(d)
+
+        #%%
+        # mengembalikan bentuk grup ke dalam 1 list saja  ex:[0 5 1 2 5]
+        lst = []
+        for n in penyilangan:
+            a = penyilangan.index(n)
+            for m in n:
+                for i in range(1):
+                    ele = [m, a]
+                    lst.append(ele)
+        new = sorted(lst, key=operator.itemgetter(0))
+        lsst = []
+        for y in new:
+            x = y[1]
+            lsst.append(x)
+        list_mutasi = [lsst]
+        return list_mutasi
+
+    
+    mutasi = mutation(penyilangan)
+    #print(mutasi)
+
+    
+    fitneskromosom = fitnessfunction(mutasi, ngroup)
+    #print(fitneskromosom)
+
+    
+    kumpulan_populasi = kumpulan_populasi.append(fitneskromosom, ignore_index = True)
+    print(kumpulan_populasi)
+
+#---------------akhir generasi----------------------------------------------
+print(kumpulan_populasi)
+
+
+
+# %%
+#------------------------------Local Search-------------------------------------------------
+
+#step 1 : get kromosom who have max fitnessfunction
+final_kromosom = []
+maxValue = kumpulan_populasi['fitnes'].max()
+#print(maxValue)
+final_kromosom = kumpulan_populasi.loc[kumpulan_populasi['fitnes'] == maxValue]
+print(final_kromosom)  
+
+#step 2 : cek elemen i dan j, jika berbeda kelompok, coba tukar
+def swapPositions(list, pos1, pos2): 
+      
+    list[pos1], list[pos2] = list[pos2], list[pos1] 
+    return list
+
+dfkromosom = final_kromosom['kromosom']
+listkromosom = dfkromosom.values.tolist()
+final_fitnes = maxValue
+print(final_fitnes)
+#%%
+liskromosom = [item for elem in listkromosom for item in elem]
+print(liskromosom)
+#%%
+#step 3 : hitung nilai fitnes baru, jika selisih > 0 maka tukar elemen dan update kromosom
+#step 4 : keluarkan kromosom dengan nilai fitnes terbaik
+nilai = fitnesssfunction(liskromosom, ngroup)
+print(nilai)
+nilai_fitnes = nilai
+print(nilai_fitnes)
+
+def swapPositions(list, pos1, pos2): 
+      
+    list[pos1], list[pos2] = list[pos2], list[pos1] 
+    return list
+
+
+
+for i in range (ndata):
+    for j in range (ndata):
+        if i != j :
+          #cek isi index
+          x = liskromosom[i]
+          y = liskromosom[j]
+          print([i,j])
+          #print([x,y])
+          if x != y :
+            value = []
+            index_grup = findIndex(liskromosom[i], liskromosom)
+            #print(index_grup)
+            for a in index_grup:
+                for b in index_grup:
+                    if a > b:
+                      r = dij.loc[(dij['i'] == a) & (dij['j'] == b)]
+                      jarak = r.jarak.values
+                      d = sum(jarak)
+                      value.append(d)
+                      sdiaw = sum(value)
+            #print('nilai sdiaw: ', sdiaw)
+
+            value = []
+            index_grup = findIndex(liskromosom[j], liskromosom)
+            #print(index_grup)
+            for c in index_grup:
+                for d in index_grup:
+                    if c > d:
+                      r = dij.loc[(dij['i'] == c) & (dij['j'] == d)]
+                      jarak = r.jarak.values
+                      d = sum(jarak)
+                      value.append(d)
+                      sdjaw = sum(value)
+            #print('nilai sdjaw: ', sdjaw)
+
+            liskromosom = swapPositions(liskromosom, i, j)
+
+            
+            index_grup = findIndex(liskromosom[i], liskromosom)
+            #print(index_grup)
+            value = []
+            for e in index_grup:
+                for f in index_grup:
+                    if e > f:
+                      r = dij.loc[(dij['i'] == e) & (dij['j'] == f)]
+                      jarak = r.jarak.values
+                      d = sum(jarak)
+                      value.append(d)
+                      sdiak = sum(value)
+            #print('nilai sdiak: ', sdiak)
+
+            index_grup = findIndex(liskromosom[j], liskromosom)
+            #print(index_grup)
+            value = []
+            for g in index_grup:
+                for h in index_grup:
+                    if g > h:
+                      r = dij.loc[(dij['i'] == g) & (dij['j'] == h)]
+                      jarak = r.jarak.values
+                      d = sum(jarak)
+                      value.append(d)
+                      sdjak = sum(value)
+            #print('nilai sdjak: ', sdjak)
+
+            delta = sdiak + sdjak - sdiaw - sdjaw
+            #print(delta)
+
+            if delta < 0 :
+              liskromosom = swapPositions(liskromosom, i, j)
+
+                
+akhir = time.time()
+waktu = akhir - awal
+
+print(liskromosom)
+print(waktu)
